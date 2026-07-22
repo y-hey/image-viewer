@@ -145,6 +145,8 @@
                          Foreground="#CCCCCC" FontSize="12" FontFamily="Consolas"
                          SelectionMode="Extended"
                          SelectionChanged="OnImageSelected"
+                         PreviewMouseMove="OnListMouseMove"
+                         MouseLeave="OnListMouseLeave"
                          ItemTemplate="{StaticResource ListItemTemplate}"
                          ItemsPanel="{StaticResource ListPanel}"
                          VirtualizingPanel.IsVirtualizing="True"

@@ -42,6 +42,7 @@ public partial class MainWindow : Window
     private static readonly string[] BgNames = ["Dark", "Checker", "White", "Gray"];
     private readonly MediaPlayer _player = new();
     private readonly DispatcherTimer _audioTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private string? _hoverPlayingPath;
     private FileSystemWatcher? _watcher;
     private DispatcherTimer? _watcherDebounce;
     private FolderLock? _lock;
@@ -58,7 +59,11 @@ public partial class MainWindow : Window
                 AudioTime.Text = $"{pos:mm\\:ss} / {dur:mm\\:ss}";
             }
         };
-        _player.MediaEnded += (_, _) => Dispatcher.Invoke(StopAudio);
+        _player.MediaEnded += (_, _) => Dispatcher.Invoke(() =>
+        {
+            _player.Position = TimeSpan.Zero;
+            _player.Play();
+        });
         Loaded += async (_, _) =>
         {
             var args = Environment.GetCommandLineArgs();
@@ -407,8 +412,40 @@ public partial class MainWindow : Window
         _player.Stop();
         _player.Close();
         _audioTimer.Stop();
+        _hoverPlayingPath = null;
         PlayBtn.Content = "▶ Play";
         AudioTime.Text = "";
+    }
+
+    private void OnListMouseMove(object sender, MouseEventArgs e)
+    {
+        var pos = e.GetPosition(ImageList);
+        var hit = ImageList.InputHitTest(pos) as DependencyObject;
+        while (hit != null && hit is not ListBoxItem)
+            hit = VisualTreeHelper.GetParent(hit);
+
+        if (hit is ListBoxItem item && item.Content is ImageEntry entry)
+        {
+            var ext = Path.GetExtension(entry.FullPath);
+            if (AudioExt.Contains(ext))
+            {
+                if (_hoverPlayingPath != entry.FullPath)
+                {
+                    _player.Open(new Uri(entry.FullPath));
+                    _player.Play();
+                    _audioTimer.Start();
+                    _hoverPlayingPath = entry.FullPath;
+                }
+                return;
+            }
+        }
+
+        if (_hoverPlayingPath != null) StopAudio();
+    }
+
+    private void OnListMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_hoverPlayingPath != null) StopAudio();
     }
 
     // --- Font preview ---
