@@ -168,18 +168,21 @@ public partial class MainWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
-            _watcherDebounce?.Stop();
-            _watcherDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _watcherDebounce.Tick += async (_, _) =>
+            if (_watcherDebounce == null)
             {
-                _watcherDebounce!.Stop();
-                var newList = await Task.Run(() => Scan(_root));
-                _master = newList;
-                _folderFiltered = _master;
-                if (_db != null) await Task.Run(() => _db.SyncFiles(_master));
-                ApplyFilters();
-                StatusText.Text = $"{_master.Count} files";
-            };
+                _watcherDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+                _watcherDebounce.Tick += async (_, _) =>
+                {
+                    _watcherDebounce!.Stop();
+                    var newList = await Task.Run(() => Scan(_root));
+                    _master = newList;
+                    _folderFiltered = _master;
+                    if (_db != null) await Task.Run(() => _db.SyncFiles(_master));
+                    ApplyFilters();
+                    StatusText.Text = $"{_master.Count} files";
+                };
+            }
+            _watcherDebounce.Stop();
             _watcherDebounce.Start();
         });
     }
@@ -315,7 +318,7 @@ public partial class MainWindow : Window
         ImageList.ItemsSource = _display;
         UpdateStatus();
 
-        if (list.Count > 0)
+        if (_display.Count > 0)
         {
             ImageList.SelectedIndex = 0;
             ImageList.ScrollIntoView(ImageList.SelectedItem!);
@@ -417,17 +420,20 @@ public partial class MainWindow : Window
         AudioTime.Text = "";
     }
 
+    private ListBoxItem? _lastHoverItem;
+
     private void OnListMouseMove(object sender, MouseEventArgs e)
     {
-        var pos = e.GetPosition(ImageList);
-        var hit = ImageList.InputHitTest(pos) as DependencyObject;
+        var hit = ImageList.InputHitTest(e.GetPosition(ImageList)) as DependencyObject;
         while (hit != null && hit is not ListBoxItem)
             hit = VisualTreeHelper.GetParent(hit);
 
-        if (hit is ListBoxItem item && item.Content is ImageEntry entry)
+        if (hit is ListBoxItem item)
         {
-            var ext = Path.GetExtension(entry.FullPath);
-            if (AudioExt.Contains(ext))
+            if (item == _lastHoverItem) return;
+            _lastHoverItem = item;
+
+            if (item.Content is ImageEntry entry && AudioExt.Contains(Path.GetExtension(entry.FullPath)))
             {
                 if (_hoverPlayingPath != entry.FullPath)
                 {
@@ -435,9 +441,14 @@ public partial class MainWindow : Window
                     _player.Play();
                     _audioTimer.Start();
                     _hoverPlayingPath = entry.FullPath;
+                    PlayBtn.Content = "▶ Playing";
                 }
                 return;
             }
+        }
+        else
+        {
+            _lastHoverItem = null;
         }
 
         if (_hoverPlayingPath != null) StopAudio();

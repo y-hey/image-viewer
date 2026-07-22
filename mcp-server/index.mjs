@@ -21,6 +21,7 @@ if (!fs.existsSync(dbPath)) {
 const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
+db.pragma("busy_timeout = 5000");
 
 const server = new McpServer({
   name: "imageviewer-asset-manager",
@@ -136,20 +137,20 @@ server.tool(
     if (!row) return { content: [{ type: "text", text: `Not found: ${asset_path}` }] };
 
     const existing = getAssetMeta(row.id);
+    const resolved = {
+      asset_type: asset_type !== undefined ? asset_type : (existing?.asset_type ?? ""),
+      usage: usage !== undefined ? usage : (existing?.usage ?? ""),
+      notes: notes !== undefined ? notes : (existing?.notes ?? ""),
+    };
     db.prepare(`
       INSERT INTO asset_metadata (asset_id, asset_type, usage, notes, metadata_json)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(asset_id) DO UPDATE SET
-        asset_type = COALESCE(?, asset_type),
-        usage = COALESCE(?, usage),
-        notes = COALESCE(?, notes)
+        asset_type = ?, usage = ?, notes = ?
     `).run(
-      row.id,
-      asset_type ?? existing?.asset_type ?? "",
-      usage ?? existing?.usage ?? "",
-      notes ?? existing?.notes ?? "",
+      row.id, resolved.asset_type, resolved.usage, resolved.notes,
       existing?.metadata_json ?? "",
-      asset_type, usage, notes
+      resolved.asset_type, resolved.usage, resolved.notes
     );
 
     return { content: [{ type: "text", text: `Updated metadata for ${asset_path}` }] };

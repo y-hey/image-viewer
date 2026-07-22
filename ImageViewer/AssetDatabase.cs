@@ -20,6 +20,7 @@ public sealed class AssetDatabase : IDisposable
     {
         Exec("PRAGMA journal_mode=WAL");
         Exec("PRAGMA foreign_keys=ON");
+        Exec("PRAGMA busy_timeout=5000");
         Exec("""
             CREATE TABLE IF NOT EXISTS assets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

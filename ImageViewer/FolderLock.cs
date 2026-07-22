@@ -43,6 +43,8 @@ public sealed class FolderLock : IDisposable
         return (new FolderLock(lockPath), null);
     }
 
+    private int _writeFailCount;
+
     private void WriteLock()
     {
         if (_disposed) return;
@@ -50,9 +52,17 @@ public sealed class FolderLock : IDisposable
         {
             var info = new LockInfo(Environment.MachineName, Environment.ProcessId, Environment.UserName, DateTime.UtcNow);
             var json = JsonSerializer.Serialize(info);
-            File.WriteAllText(_lockPath, json);
+            var tmp = _lockPath + ".tmp";
+            File.WriteAllText(tmp, json);
+            File.Move(tmp, _lockPath, overwrite: true);
+            _writeFailCount = 0;
         }
-        catch { }
+        catch
+        {
+            _writeFailCount++;
+            if (_writeFailCount >= 3)
+                System.Diagnostics.Trace.WriteLine($"FolderLock: heartbeat write failed {_writeFailCount} times");
+        }
     }
 
     private static LockInfo? ReadLock(string path)
