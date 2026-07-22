@@ -5,16 +5,26 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace ImageViewer;
 
 public partial class MainWindow : Window
 {
-    private static readonly HashSet<string> Ext = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ImageExt = new(StringComparer.OrdinalIgnoreCase)
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif",
         ".ico", ".webp", ".dds", ".wdp", ".jxr"
     };
+    private static readonly HashSet<string> AudioExt = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".wav", ".mp3", ".ogg", ".flac", ".aac", ".wma"
+    };
+    private static readonly HashSet<string> FontExt = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ttf", ".otf"
+    };
+    private static readonly HashSet<string> AllExt = [.. ImageExt, .. AudioExt, .. FontExt];
 
     private string _root = "";
     private List<ImageEntry> _master = [];
@@ -30,10 +40,24 @@ public partial class MainWindow : Window
     private int _bgIndex;
     private static readonly Brush[] BgBrushes = [CreateBrush(0x18), CreateCheckerBrush(), Brushes.White, CreateBrush(0x80)];
     private static readonly string[] BgNames = ["Dark", "Checker", "White", "Gray"];
+    private readonly MediaPlayer _player = new();
+    private readonly DispatcherTimer _audioTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private FileSystemWatcher? _watcher;
+    private DispatcherTimer? _watcherDebounce;
 
     public MainWindow()
     {
         InitializeComponent();
+        _audioTimer.Tick += (_, _) =>
+        {
+            if (_player.NaturalDuration.HasTimeSpan)
+            {
+                var pos = _player.Position;
+                var dur = _player.NaturalDuration.TimeSpan;
+                AudioTime.Text = $"{pos:mm\\:ss} / {dur:mm\\:ss}";
+            }
+        };
+        _player.MediaEnded += (_, _) => Dispatcher.Invoke(StopAudio);
         Loaded += async (_, _) =>
         {
             var args = Environment.GetCommandLineArgs();
@@ -44,7 +68,9 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        StopAudio();
         SaveSettings();
+        _watcher?.Dispose();
         _db?.Dispose();
         base.OnClosed(e);
     }
@@ -96,10 +122,47 @@ public partial class MainWindow : Window
         _db = new AssetDatabase(root);
         await Task.Run(() => _db.SyncFiles(_master));
 
+        SetupWatcher(root);
         LoadSettings();
         RefreshTagPanel();
         ApplyFilters();
         StatusText.Text = $"{_master.Count} files";
+    }
+
+    private void SetupWatcher(string root)
+    {
+        _watcher?.Dispose();
+        _watcher = new FileSystemWatcher(root)
+        {
+            IncludeSubdirectories = true,
+            EnableRaisingEvents = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
+        };
+        _watcher.Created += OnFsChanged;
+        _watcher.Deleted += OnFsChanged;
+        _watcher.Renamed += (_, _) => ScheduleRescan();
+    }
+
+    private void OnFsChanged(object sender, FileSystemEventArgs e) => ScheduleRescan();
+
+    private void ScheduleRescan()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            _watcherDebounce?.Stop();
+            _watcherDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            _watcherDebounce.Tick += async (_, _) =>
+            {
+                _watcherDebounce!.Stop();
+                var newList = await Task.Run(() => Scan(_root));
+                _master = newList;
+                _folderFiltered = _master;
+                if (_db != null) await Task.Run(() => _db.SyncFiles(_master));
+                ApplyFilters();
+                StatusText.Text = $"{_master.Count} files";
+            };
+            _watcherDebounce.Start();
+        });
     }
 
     // --- Tree / Scan ---
@@ -132,9 +195,13 @@ public partial class MainWindow : Window
                     AttributesToSkip = FileAttributes.Hidden | FileAttributes.System
                 })
                 .Where(f => !f.StartsWith(dbDir, StringComparison.OrdinalIgnoreCase))
-                .Where(f => Ext.Contains(Path.GetExtension(f)))
+                .Where(f => AllExt.Contains(Path.GetExtension(f)))
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                .Select(f => new ImageEntry(f, Path.GetRelativePath(_root, f)))
+                .Select(f =>
+                {
+                    var info = new FileInfo(f);
+                    return new ImageEntry(f, Path.GetRelativePath(_root, f), info.Length, info.LastWriteTimeUtc);
+                })
                 .ToList();
         }
         catch { return []; }
@@ -200,6 +267,17 @@ public partial class MainWindow : Window
         ApplyFilters();
     }
 
+    private void OnSortChanged(object sender, SelectionChangedEventArgs e) => ApplyFilters();
+
+    private List<ImageEntry> ApplySort(List<ImageEntry> list) => SortCombo?.SelectedIndex switch
+    {
+        1 => list.OrderByDescending(e => e.FileSize).ToList(),
+        2 => list.OrderByDescending(e => e.ModifiedAt).ToList(),
+        3 => list.OrderBy(e => e.Extension, StringComparer.OrdinalIgnoreCase)
+                 .ThenBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase).ToList(),
+        _ => list.OrderBy(e => e.RelativePath, StringComparer.OrdinalIgnoreCase).ToList(),
+    };
+
     private void ApplyFilters()
     {
         var list = _folderFiltered;
@@ -214,8 +292,8 @@ public partial class MainWindow : Window
             list = list.Where(e => match.Contains(e.RelativePath)).ToList();
         }
 
-        _display = list;
-        ImageList.ItemsSource = list;
+        _display = ApplySort(list);
+        ImageList.ItemsSource = _display;
         UpdateStatus();
 
         if (list.Count > 0)
@@ -245,8 +323,24 @@ public partial class MainWindow : Window
 
         FileNameText.Text = entry.FileName;
         ShowAssetTags(entry);
-        ResetZoom();
+        DimText.Text = "";
 
+        var ext = Path.GetExtension(entry.FullPath);
+        SetPreviewMode(ext);
+
+        if (AudioExt.Contains(ext))
+        {
+            AudioInfo.Text = entry.FileName;
+            return;
+        }
+
+        if (FontExt.Contains(ext))
+        {
+            ShowFontPreview(entry.FullPath);
+            return;
+        }
+
+        ResetZoom();
         _cts.Cancel();
         _cts.Dispose();
         _cts = new CancellationTokenSource();
@@ -265,6 +359,68 @@ public partial class MainWindow : Window
             _cache.PreCacheAround(idx, _display, h);
         }
         catch (OperationCanceledException) { }
+    }
+
+    private void SetPreviewMode(string extension)
+    {
+        bool isImage = ImageExt.Contains(extension);
+        bool isAudio = AudioExt.Contains(extension);
+        bool isFont = FontExt.Contains(extension);
+
+        PreviewBorder.Visibility = isImage ? Visibility.Visible : Visibility.Collapsed;
+        AudioPanel.Visibility = isAudio ? Visibility.Visible : Visibility.Collapsed;
+        FontPanel.Visibility = isFont ? Visibility.Visible : Visibility.Collapsed;
+
+        if (!isAudio) StopAudio();
+        if (!isImage) PreviewImage.Source = null;
+    }
+
+    // --- Audio preview ---
+
+    private void OnPlayClick(object sender, RoutedEventArgs e)
+    {
+        if (ImageList.SelectedItem is not ImageEntry entry) return;
+        _player.Open(new Uri(entry.FullPath));
+        _player.Play();
+        PlayBtn.Content = "▶ Playing";
+        _audioTimer.Start();
+    }
+
+    private void OnStopClick(object sender, RoutedEventArgs e) => StopAudio();
+
+    private void StopAudio()
+    {
+        _player.Stop();
+        _player.Close();
+        _audioTimer.Stop();
+        PlayBtn.Content = "▶ Play";
+        AudioTime.Text = "";
+    }
+
+    // --- Font preview ---
+
+    private void ShowFontPreview(string fontPath)
+    {
+        try
+        {
+            var glyph = new GlyphTypeface(new Uri(fontPath));
+            var familyName = glyph.FamilyNames.Values.FirstOrDefault() ?? "Unknown";
+            FontInfoText.Text = familyName;
+            DimText.Text = familyName;
+
+            var dir = Path.GetDirectoryName(fontPath)!.Replace('\\', '/');
+            var fontFamily = new FontFamily(
+                new Uri("file:///" + dir + "/"),
+                "./" + Path.GetFileName(fontPath) + "#" + familyName);
+            FontSample1.FontFamily = fontFamily;
+            FontSample2.FontFamily = fontFamily;
+            FontSample3.FontFamily = fontFamily;
+        }
+        catch
+        {
+            FontInfoText.Text = "フォントの読み込みに失敗";
+            FontSample1.FontFamily = FontSample2.FontFamily = FontSample3.FontFamily = SystemFonts.MessageFontFamily;
+        }
     }
 
     private void UpdateStatus()
@@ -429,6 +585,39 @@ public partial class MainWindow : Window
         dlg.ShowDialog();
     }
 
+    // --- Metadata ---
+
+    private void EditMetadata()
+    {
+        if (ImageList.SelectedItem is not ImageEntry entry || _db == null) return;
+        var id = _db.GetAssetId(entry.RelativePath);
+        if (id == null) return;
+
+        var existing = _db.GetMetadata(id.Value);
+        var dlg = new MetadataDialog(existing, entry.FileName) { Owner = this };
+        if (dlg.ShowDialog() == true)
+            _db.SetMetadata(id.Value, dlg.Result);
+    }
+
+    private void ExportMetadata()
+    {
+        if (_db == null || string.IsNullOrEmpty(_root)) return;
+        var all = _db.ExportAll();
+        var export = all.Select(a => new
+        {
+            path = a.path,
+            tags = a.tags,
+            type = a.meta?.AssetType ?? "",
+            usage = a.meta?.Usage ?? "",
+            notes = a.meta?.Notes ?? ""
+        }).Where(a => a.tags.Count > 0 || !string.IsNullOrEmpty(a.type) || !string.IsNullOrEmpty(a.notes));
+
+        var json = JsonSerializer.Serialize(export, new JsonSerializerOptions { WriteIndented = true });
+        var exportPath = Path.Combine(_root, "_db", "asset-catalog.json");
+        File.WriteAllText(exportPath, json);
+        StatusText.Text = $"Exported to {exportPath}";
+    }
+
     // --- Settings persistence (stored in _db/ for portability) ---
 
     private string SettingsPath => Path.Combine(_root, "_db", "viewer-settings.json");
@@ -463,6 +652,7 @@ public partial class MainWindow : Window
             if (s.IsGridMode && !_isGridMode) ToggleViewMode();
             if (s.WindowWidth > 0) Width = s.WindowWidth;
             if (s.WindowHeight > 0) Height = s.WindowHeight;
+            if (s.LeftPaneWidth > 0) LeftPaneColumn.Width = new GridLength(s.LeftPaneWidth);
         }
         catch { }
     }
@@ -483,6 +673,10 @@ public partial class MainWindow : Window
                 case Key.D:
                     _ = DetectDuplicatesAsync();
                     e.Handled = true; return;
+                case Key.M:
+                    EditMetadata(); e.Handled = true; return;
+                case Key.E:
+                    ExportMetadata(); e.Handled = true; return;
             }
         }
 
@@ -671,9 +865,10 @@ public partial class MainWindow : Window
     }
 }
 
-public sealed record ImageEntry(string FullPath, string RelativePath)
+public sealed record ImageEntry(string FullPath, string RelativePath, long FileSize, DateTime ModifiedAt)
 {
     public string FileName => Path.GetFileName(FullPath);
+    public string Extension => Path.GetExtension(FullPath);
 }
 
 public class FolderNode

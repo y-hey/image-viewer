@@ -41,6 +41,13 @@ public sealed class AssetDatabase : IDisposable
             );
             CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path);
             CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+            CREATE TABLE IF NOT EXISTS asset_metadata (
+                asset_id INTEGER PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
+                asset_type TEXT,
+                usage TEXT,
+                notes TEXT,
+                metadata_json TEXT
+            );
         """);
         Migrate();
     }
@@ -86,8 +93,7 @@ public sealed class AssetDatabase : IDisposable
                 pP.Value = f.RelativePath;
                 pN.Value = Path.GetFileName(f.RelativePath);
                 pE.Value = Path.GetExtension(f.RelativePath);
-                try { pS.Value = new FileInfo(f.FullPath).Length; }
-                catch { pS.Value = 0; }
+                pS.Value = f.FileSize;
                 cmd.ExecuteNonQuery();
             }
         }
@@ -231,6 +237,46 @@ public sealed class AssetDatabase : IDisposable
         return groups.Values.Where(g => g.Count > 1).ToList();
     }
 
+    // --- Metadata ---
+
+    public AssetMeta? GetMetadata(long assetId)
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT asset_type, usage, notes, metadata_json FROM asset_metadata WHERE asset_id = @id";
+        cmd.Parameters.AddWithValue("@id", assetId);
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return null;
+        return new AssetMeta(
+            r.IsDBNull(0) ? "" : r.GetString(0),
+            r.IsDBNull(1) ? "" : r.GetString(1),
+            r.IsDBNull(2) ? "" : r.GetString(2),
+            r.IsDBNull(3) ? "" : r.GetString(3));
+    }
+
+    public void SetMetadata(long assetId, AssetMeta meta)
+    {
+        Exec("""
+            INSERT INTO asset_metadata (asset_id, asset_type, usage, notes, metadata_json)
+            VALUES (@id, @t, @u, @n, @j)
+            ON CONFLICT(asset_id) DO UPDATE SET
+                asset_type = @t, usage = @u, notes = @n, metadata_json = @j
+        """, ("@id", assetId), ("@t", meta.AssetType), ("@u", meta.Usage),
+             ("@n", meta.Notes), ("@j", meta.MetadataJson));
+    }
+
+    public List<(string path, List<string> tags, AssetMeta? meta)> ExportAll()
+    {
+        var result = new List<(string, List<string>, AssetMeta?)>();
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT id, path FROM assets ORDER BY path";
+        var assets = new List<(long id, string path)>();
+        using (var r = cmd.ExecuteReader())
+            while (r.Read()) assets.Add((r.GetInt64(0), r.GetString(1)));
+        foreach (var (id, path) in assets)
+            result.Add((path, GetAssetTags(id), GetMetadata(id)));
+        return result;
+    }
+
     public void Dispose() => _conn.Dispose();
 
     private void Exec(string sql, params (string name, object val)[] args)
@@ -251,3 +297,5 @@ public sealed class AssetDatabase : IDisposable
 }
 
 public sealed record AssetRecord(long Id, string Path, string FileName, long FileSize, string? Hash);
+
+public sealed record AssetMeta(string AssetType, string Usage, string Notes, string MetadataJson);

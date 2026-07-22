@@ -27,9 +27,14 @@
             <StackPanel Width="140" Margin="2" ToolTip="{Binding RelativePath}">
                 <Border Width="130" Height="130" Background="#2A2A2A"
                         BorderBrush="#3E3E3E" BorderThickness="1">
-                    <Image Source="{Binding FullPath, Converter={StaticResource ThumbConv}, IsAsync=True}"
-                           Stretch="UniformToFill"
-                           RenderOptions.BitmapScalingMode="LowQuality"/>
+                    <Grid>
+                        <TextBlock Text="{Binding Extension}" FontSize="18" Foreground="#555555"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   FontFamily="Consolas"/>
+                        <Image Source="{Binding FullPath, Converter={StaticResource ThumbConv}, IsAsync=True}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="LowQuality"/>
+                    </Grid>
                 </Border>
                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"
                            Foreground="#AAAAAA" FontSize="10" Margin="2,2,2,0"
@@ -55,6 +60,16 @@
                         DockPanel.Dock="Left" Padding="10,4" Margin="4,4,0,4"
                         Background="#3E3E42" Foreground="#CCCCCC"
                         BorderBrush="#555555" Cursor="Hand"/>
+                <ComboBox x:Name="SortCombo" DockPanel.Dock="Left"
+                          SelectedIndex="0" SelectionChanged="OnSortChanged"
+                          Background="#3E3E42" Foreground="#CCCCCC" BorderBrush="#555555"
+                          Width="100" Margin="4,4,0,4" VerticalContentAlignment="Center"
+                          FontSize="11">
+                    <ComboBoxItem Content="名前"/>
+                    <ComboBoxItem Content="サイズ"/>
+                    <ComboBoxItem Content="更新日時"/>
+                    <ComboBoxItem Content="拡張子"/>
+                </ComboBox>
                 <TextBlock x:Name="PathText" Text="フォルダを選択 (Ctrl+O / ドラッグ&amp;ドロップ)"
                            VerticalAlignment="Center" Margin="8,0" Foreground="#888888"
                            TextTrimming="CharacterEllipsis"/>
@@ -180,6 +195,41 @@
                                 </TransformGroup>
                             </Image.RenderTransform>
                         </Image>
+                    </Border>
+
+                    <!-- Audio preview -->
+                    <Border Grid.Row="1" x:Name="AudioPanel" Background="#181818" Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock x:Name="AudioInfo" FontSize="16" Foreground="#CCCCCC"
+                                       TextAlignment="Center" Margin="0,0,0,16"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button x:Name="PlayBtn" Content="▶ Play" Click="OnPlayClick"
+                                        Padding="12,6" Margin="4" Background="#3E3E42" Foreground="#CCCCCC"
+                                        BorderBrush="#555555" Cursor="Hand"/>
+                                <Button Content="■ Stop" Click="OnStopClick"
+                                        Padding="12,6" Margin="4" Background="#3E3E42" Foreground="#CCCCCC"
+                                        BorderBrush="#555555" Cursor="Hand"/>
+                            </StackPanel>
+                            <TextBlock x:Name="AudioTime" Foreground="#888888" FontSize="12"
+                                       TextAlignment="Center" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Font preview -->
+                    <Border Grid.Row="1" x:Name="FontPanel" Background="#181818" Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="20">
+                            <StackPanel>
+                                <TextBlock x:Name="FontInfoText" FontSize="14" Foreground="#888888" Margin="0,0,0,12"/>
+                                <TextBlock x:Name="FontSample1" FontSize="48" Foreground="#CCCCCC"
+                                           TextWrapping="Wrap" Text="AaBbCcDd 0123" Margin="0,0,0,8"/>
+                                <TextBlock x:Name="FontSample2" FontSize="24" Foreground="#AAAAAA"
+                                           TextWrapping="Wrap" Text="The quick brown fox jumps over the lazy dog"
+                                           Margin="0,0,0,8"/>
+                                <TextBlock x:Name="FontSample3" FontSize="24" Foreground="#AAAAAA"
+                                           TextWrapping="Wrap"
+                                           Text="あいうえお かきくけこ 漢字表示 0123456789"/>
+                            </StackPanel>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </Grid>
