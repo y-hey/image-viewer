@@ -34,7 +34,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource _cts = new();
     private AssetDatabase? _db;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
-    private bool _isGridMode;
+    private bool _isGridMode = true;
     private Point _panStart;
     private bool _isPanning;
     private int _bgIndex;
@@ -326,7 +326,8 @@ public partial class MainWindow : Window
         {
             ImageList.SelectedIndex = 0;
             ImageList.ScrollIntoView(ImageList.SelectedItem!);
-            ImageList.Focus();
+            if (!FolderTree.IsKeyboardFocusWithin)
+                ImageList.Focus();
         }
         else
         {

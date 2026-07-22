@@ -56,7 +56,7 @@
                 <Button Content="Open" Click="OnOpenClick" DockPanel.Dock="Left"
                         Padding="10,4" Margin="0,4" Background="#3E3E42" Foreground="#CCCCCC"
                         BorderBrush="#555555" Cursor="Hand"/>
-                <Button x:Name="ViewModeButton" Content="Grid (G)" Click="OnToggleView"
+                <Button x:Name="ViewModeButton" Content="List (G)" Click="OnToggleView"
                         DockPanel.Dock="Left" Padding="10,4" Margin="4,4,0,4"
                         Background="#3E3E42" Foreground="#CCCCCC"
                         BorderBrush="#555555" Cursor="Hand"/>
@@ -122,9 +122,9 @@
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="160" MinHeight="40"/>
+                    <RowDefinition Height="3*" MinHeight="40"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*" MinHeight="100"/>
+                    <RowDefinition Height="*" MinHeight="80"/>
                 </Grid.RowDefinitions>
 
                 <!-- Search -->
@@ -147,10 +147,9 @@
                          SelectionChanged="OnImageSelected"
                          PreviewMouseMove="OnListMouseMove"
                          MouseLeave="OnListMouseLeave"
-                         ItemTemplate="{StaticResource ListItemTemplate}"
-                         ItemsPanel="{StaticResource ListPanel}"
-                         VirtualizingPanel.IsVirtualizing="True"
-                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         ItemTemplate="{StaticResource GridItemTemplate}"
+                         ItemsPanel="{StaticResource GridPanel}"
+                         VirtualizingPanel.IsVirtualizing="False"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ContextMenu>
                         <ContextMenu x:Name="ImageContextMenu" Opened="OnContextMenuOpened">
