@@ -177,5 +177,62 @@
                            HorizontalAlignment="Right" DockPanel.Dock="Right"/>
             </DockPanel>
         </Border>
+
+        <!-- Keyboard shortcut help overlay -->
+        <Border x:Name="HelpOverlay" Grid.RowSpan="3"
+                Background="#DD1E1E1E" Visibility="Collapsed"
+                MouseDown="OnHelpOverlayClick">
+            <Border Background="#282828" BorderBrush="#555555" BorderThickness="1"
+                    CornerRadius="8" Padding="28,24"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    MaxWidth="420">
+                <StackPanel>
+                    <TextBlock Text="Keyboard Shortcuts" FontSize="16" FontWeight="SemiBold"
+                               Foreground="#EEEEEE" Margin="0,0,0,14"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                            <RowDefinition/><RowDefinition/><RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0"  Grid.Column="0" Text="J / K,  Up / Down" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="0"  Grid.Column="1" Text="前 / 次の画像" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="1"  Grid.Column="0" Text="Space / Back" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="1"  Grid.Column="1" Text="前 / 次の画像" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="2"  Grid.Column="0" Text="PageUp / Down" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="2"  Grid.Column="1" Text="10件送り (Grid: 20件)" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="3"  Grid.Column="0" Text="Home / End" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="3"  Grid.Column="1" Text="先頭 / 末尾" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="4"  Grid.Column="0" Text="T" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="4"  Grid.Column="1" Text="タグ追加" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="5"  Grid.Column="0" Text="G" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="5"  Grid.Column="1" Text="グリッド / リスト切替" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="6"  Grid.Column="0" Text="Ctrl+F" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="6"  Grid.Column="1" Text="検索" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="7"  Grid.Column="0" Text="Ctrl+O" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="7"  Grid.Column="1" Text="フォルダを開く" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="8"  Grid.Column="0" Text="Ctrl+A" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="8"  Grid.Column="1" Text="全選択" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="9"  Grid.Column="0" Text="Ctrl+D" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="9"  Grid.Column="1" Text="重複ファイル検出" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="10"  Grid.Column="0" Text="Enter" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="10"  Grid.Column="1" Text="外部ビューアで開く" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="11" Grid.Column="0" Text="Tab" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="11" Grid.Column="1" Text="ツリーにフォーカス" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="12" Grid.Column="0" Text="Escape" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="12" Grid.Column="1" Text="フィルタクリア" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="13" Grid.Column="0" Text="Right-click" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="13" Grid.Column="1" Text="タグ削除 / エクスプローラー" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="14" Grid.Column="0" Text="?" Foreground="#E0A050" FontFamily="Consolas" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="14" Grid.Column="1" Text="このヘルプを表示" Foreground="#CCCCCC" Margin="0,6,0,0"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Window>

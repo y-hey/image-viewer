@@ -42,6 +42,19 @@ public sealed class AssetDatabase : IDisposable
             CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(path);
             CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
         """);
+        Migrate();
+    }
+
+    private void Migrate()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "PRAGMA table_info(assets)";
+        var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var r = cmd.ExecuteReader())
+            while (r.Read()) cols.Add(r.GetString(1));
+
+        if (!cols.Contains("hash"))
+            Exec("ALTER TABLE assets ADD COLUMN hash TEXT");
     }
 
     public void SyncFiles(IReadOnlyList<ImageEntry> files)
@@ -161,6 +174,60 @@ public sealed class AssetDatabase : IDisposable
         return [.. ReadStrings(cmd)];
     }
 
+    public void ComputeAndStoreHash(long assetId, string fullPath)
+    {
+        try
+        {
+            using var fs = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var size = fs.Length;
+            var buf = new byte[(int)Math.Min(65536, size)];
+            var read = fs.Read(buf, 0, buf.Length);
+
+            var hash = System.Security.Cryptography.SHA256.HashData(buf.AsSpan(0, read));
+            var hex = $"{size:X16}{Convert.ToHexString(hash)}";
+
+            Exec("UPDATE assets SET hash = @h WHERE id = @id", ("@h", hex), ("@id", assetId));
+        }
+        catch { }
+    }
+
+    public List<AssetRecord> GetAssetsWithoutHash()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = "SELECT id, path, filename, file_size FROM assets WHERE hash IS NULL";
+        var list = new List<AssetRecord>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+            list.Add(new AssetRecord(r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetInt64(3), null));
+        return list;
+    }
+
+    public List<List<AssetRecord>> FindDuplicates()
+    {
+        using var cmd = _conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id, path, filename, file_size, hash FROM assets
+            WHERE hash IN (SELECT hash FROM assets WHERE hash IS NOT NULL GROUP BY hash HAVING COUNT(*) > 1)
+            ORDER BY hash, path
+        """;
+        var groups = new Dictionary<string, List<AssetRecord>>();
+        using var r = cmd.ExecuteReader();
+        while (r.Read())
+        {
+            var rec = new AssetRecord(
+                r.GetInt64(0), r.GetString(1), r.GetString(2), r.GetInt64(3),
+                r.IsDBNull(4) ? null : r.GetString(4));
+            if (rec.Hash == null) continue;
+            if (!groups.TryGetValue(rec.Hash, out var list))
+            {
+                list = [];
+                groups[rec.Hash] = list;
+            }
+            list.Add(rec);
+        }
+        return groups.Values.Where(g => g.Count > 1).ToList();
+    }
+
     public void Dispose() => _conn.Dispose();
 
     private void Exec(string sql, params (string name, object val)[] args)
@@ -179,3 +246,5 @@ public sealed class AssetDatabase : IDisposable
         return list;
     }
 }
+
+public sealed record AssetRecord(long Id, string Path, string FileName, long FileSize, string? Hash);

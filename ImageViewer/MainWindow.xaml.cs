@@ -390,6 +390,39 @@ public partial class MainWindow : Window
         catch { }
     }
 
+    // --- Duplicate detection ---
+
+    private async Task DetectDuplicatesAsync()
+    {
+        if (_db == null || string.IsNullOrEmpty(_root)) return;
+
+        StatusText.Text = "ハッシュ計算中...";
+        var unhashed = _db.GetAssetsWithoutHash();
+
+        if (unhashed.Count > 0)
+        {
+            var root = _root;
+            var db = _db;
+            await Task.Run(() =>
+            {
+                foreach (var rec in unhashed)
+                {
+                    var fullPath = Path.Combine(root, rec.Path);
+                    if (File.Exists(fullPath))
+                        db.ComputeAndStoreHash(rec.Id, fullPath);
+                }
+            });
+        }
+
+        var groups = _db.FindDuplicates();
+        StatusText.Text = groups.Count > 0
+            ? $"{groups.Count} 重複グループ検出"
+            : $"{_master.Count} files";
+
+        var dlg = new DuplicateDialog(groups) { Owner = this };
+        dlg.ShowDialog();
+    }
+
     // --- Settings persistence (stored in _db/ for portability) ---
 
     private string SettingsPath => Path.Combine(_root, "_db", "viewer-settings.json");
@@ -443,6 +476,9 @@ public partial class MainWindow : Window
                 case Key.A:
                     ImageList.SelectAll();
                     e.Handled = true; return;
+                case Key.D:
+                    _ = DetectDuplicatesAsync();
+                    e.Handled = true; return;
             }
         }
 
@@ -454,6 +490,20 @@ public partial class MainWindow : Window
         }
 
         if (FolderTree.IsKeyboardFocusWithin) { base.OnPreviewKeyDown(e); return; }
+
+        if (e.Key == Key.Oem2 || e.Key == Key.OemQuestion)
+        {
+            ToggleHelpOverlay();
+            e.Handled = true;
+            return;
+        }
+
+        if (HelpOverlay.Visibility == Visibility.Visible)
+        {
+            HelpOverlay.Visibility = Visibility.Collapsed;
+            e.Handled = true;
+            return;
+        }
 
         switch (e.Key)
         {
@@ -487,6 +537,18 @@ public partial class MainWindow : Window
                 e.Handled = true; break;
         }
         base.OnPreviewKeyDown(e);
+    }
+
+    private void ToggleHelpOverlay()
+    {
+        HelpOverlay.Visibility = HelpOverlay.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void OnHelpOverlayClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        HelpOverlay.Visibility = Visibility.Collapsed;
     }
 
     private void Move(int delta)
