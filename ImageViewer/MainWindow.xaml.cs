@@ -289,7 +289,11 @@ public partial class MainWindow : Window
         ApplyFilters();
     }
 
-    private void OnSortChanged(object sender, SelectionChangedEventArgs e) => ApplyFilters();
+    private void OnSortChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        ApplyFilters();
+    }
 
     private List<ImageEntry> ApplySort(List<ImageEntry> list) => SortCombo?.SelectedIndex switch
     {
