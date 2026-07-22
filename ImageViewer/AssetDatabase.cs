@@ -128,7 +128,10 @@ public sealed class AssetDatabase : IDisposable
             DELETE FROM asset_tags WHERE asset_id = @a
             AND tag_id = (SELECT id FROM tags WHERE name = @n)
         """, ("@a", assetId), ("@n", tagName));
-        Exec("DELETE FROM tags WHERE id NOT IN (SELECT DISTINCT tag_id FROM asset_tags)");
+        Exec("""
+            DELETE FROM tags WHERE name = @n
+            AND id NOT IN (SELECT tag_id FROM asset_tags)
+        """, ("@n", tagName));
     }
 
     public List<string> GetAssetTags(long assetId)

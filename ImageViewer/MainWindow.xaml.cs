@@ -124,7 +124,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var dbDir = Path.Combine(folder, "_db");
+            var dbDir = Path.Combine(folder, "_db") + Path.DirectorySeparatorChar;
             return Directory.EnumerateFiles(folder, "*.*", new EnumerationOptions
                 {
                     RecurseSubdirectories = true,
@@ -215,7 +215,6 @@ public partial class MainWindow : Window
         }
 
         _display = list;
-        _cache.Clear();
         ImageList.ItemsSource = list;
         UpdateStatus();
 
@@ -241,7 +240,7 @@ public partial class MainWindow : Window
         UpdateStatus();
 
         if (ImageList.SelectedItem is not ImageEntry entry) return;
-        var idx = _display.IndexOf(entry);
+        var idx = ImageList.SelectedIndex;
         if (idx < 0) return;
 
         FileNameText.Text = entry.FileName;
@@ -249,6 +248,7 @@ public partial class MainWindow : Window
         ResetZoom();
 
         _cts.Cancel();
+        _cts.Dispose();
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
@@ -256,7 +256,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var img = _cache.TryGet(idx) ?? await _cache.LoadAsync(idx, entry.FullPath, h, token);
+            var img = _cache.TryGet(entry.FullPath) ?? await _cache.LoadAsync(entry.FullPath, h, token);
             if (img != null && !token.IsCancellationRequested)
             {
                 PreviewImage.Source = img;
@@ -443,9 +443,7 @@ public partial class MainWindow : Window
                 IsGridMode = _isGridMode,
                 WindowWidth = Width,
                 WindowHeight = Height,
-                LeftPaneWidth = ((Grid)Content).FindName("FolderTree") is FrameworkElement
-                    ? ((Grid)((Grid)Content).Children[1]).ColumnDefinitions[0].Width.Value
-                    : 220
+                LeftPaneWidth = LeftPaneColumn.Width.Value
             };
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(SettingsPath, json);

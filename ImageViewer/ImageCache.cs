@@ -6,30 +6,34 @@ namespace ImageViewer;
 
 public sealed class ImageCache
 {
-    private readonly ConcurrentDictionary<int, BitmapImage> _items = new();
+    private readonly ConcurrentDictionary<string, BitmapImage> _items = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource _preCts = new();
     private const int Radius = 5;
     private const int EvictBeyond = 15;
 
-    public BitmapImage? TryGet(int index) =>
-        _items.TryGetValue(index, out var img) ? img : null;
+    public BitmapImage? TryGet(string path) =>
+        _items.TryGetValue(path, out var img) ? img : null;
 
-    public async Task<BitmapImage?> LoadAsync(int index, string path, int decodeHeight, CancellationToken ct)
+    public async Task<BitmapImage?> LoadAsync(string path, int decodeHeight, CancellationToken ct)
     {
-        if (_items.TryGetValue(index, out var hit)) return hit;
+        if (_items.TryGetValue(path, out var hit)) return hit;
         var img = await DecodeAsync(path, decodeHeight, ct);
-        if (img != null) _items.TryAdd(index, img);
+        if (img != null) _items.TryAdd(path, img);
         return img;
     }
 
     public void PreCacheAround(int center, IReadOnlyList<ImageEntry> list, int decodeHeight)
     {
         _preCts.Cancel();
+        _preCts.Dispose();
         _preCts = new CancellationTokenSource();
         var token = _preCts.Token;
 
+        var keep = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (int i = Math.Max(0, center - EvictBeyond); i <= Math.Min(list.Count - 1, center + EvictBeyond); i++)
+            keep.Add(list[i].FullPath);
         foreach (var k in _items.Keys)
-            if (Math.Abs(k - center) > EvictBeyond)
+            if (!keep.Contains(k))
                 _items.TryRemove(k, out _);
 
         _ = Task.Run(async () =>
@@ -40,10 +44,12 @@ public sealed class ImageCache
                 foreach (var idx in new[] { center + d, center - d })
                 {
                     if (token.IsCancellationRequested) break;
-                    if (idx < 0 || idx >= list.Count || _items.ContainsKey(idx)) continue;
-                    var img = await DecodeAsync(list[idx].FullPath, decodeHeight, token);
+                    if (idx < 0 || idx >= list.Count) continue;
+                    var path = list[idx].FullPath;
+                    if (_items.ContainsKey(path)) continue;
+                    var img = await DecodeAsync(path, decodeHeight, token);
                     if (img != null && !token.IsCancellationRequested)
-                        _items.TryAdd(idx, img);
+                        _items.TryAdd(path, img);
                 }
             }
         }, token);
@@ -52,6 +58,8 @@ public sealed class ImageCache
     public void Clear()
     {
         _preCts.Cancel();
+        _preCts.Dispose();
+        _preCts = new CancellationTokenSource();
         _items.Clear();
     }
 

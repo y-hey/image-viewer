@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
 
@@ -51,7 +52,7 @@ public sealed class ThumbnailConverter : IValueConverter
             bi.EndInit();
             bi.Freeze();
             MemCache.TryAdd(path, bi);
-            SaveToDisk(bi, path);
+            Task.Run(() => SaveToDisk(bi, path));
             return bi;
         }
         catch
@@ -68,7 +69,7 @@ public sealed class ThumbnailConverter : IValueConverter
     {
         var key = _rootPath != null ? Path.GetRelativePath(_rootPath, fullPath) : fullPath;
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(key));
-        return Path.Combine(_thumbDir!, System.Convert.ToHexString(hash)[..16] + ".jpg");
+        return Path.Combine(_thumbDir!, System.Convert.ToHexString(hash)[..16] + ".png");
     }
 
     private static BitmapImage? LoadFromDisk(string path)
@@ -92,7 +93,7 @@ public sealed class ThumbnailConverter : IValueConverter
         if (_thumbDir == null) return;
         try
         {
-            var encoder = new JpegBitmapEncoder { QualityLevel = 80 };
+            var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(source));
             var diskPath = GetDiskPath(originalPath);
             using var fs = new FileStream(diskPath, FileMode.Create);

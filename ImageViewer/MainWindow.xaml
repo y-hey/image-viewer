@@ -64,7 +64,7 @@
         <!-- Main -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" MinWidth="100"/>
+                <ColumnDefinition x:Name="LeftPaneColumn" Width="220" MinWidth="100"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
