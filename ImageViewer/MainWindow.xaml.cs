@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _audioTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private FileSystemWatcher? _watcher;
     private DispatcherTimer? _watcherDebounce;
+    private FolderLock? _lock;
 
     public MainWindow()
     {
@@ -72,6 +73,7 @@ public partial class MainWindow : Window
         SaveSettings();
         _watcher?.Dispose();
         _db?.Dispose();
+        _lock?.Dispose();
         base.OnClosed(e);
     }
 
@@ -94,7 +96,19 @@ public partial class MainWindow : Window
 
     private async Task OpenRoot(string root)
     {
+        _lock?.Dispose();
         _db?.Dispose();
+
+        var (lk, lockErr) = FolderLock.TryAcquire(root);
+        if (lockErr != null)
+        {
+            var result = MessageBox.Show(this, lockErr + "\n\n強制的に開きますか？", "ロック検出",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes) return;
+            (lk, _) = FolderLock.ForceAcquire(root);
+        }
+        _lock = lk;
+
         _root = root;
         _activeTagFilters.Clear();
         ThumbnailConverter.SetRootPath(root);
