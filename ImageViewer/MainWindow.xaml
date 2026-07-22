@@ -149,22 +149,38 @@
                               ResizeDirection="Rows"/>
 
                 <!-- Preview -->
-                <Grid Grid.Row="3" x:Name="PreviewArea" Background="#181818">
+                <Grid Grid.Row="3" x:Name="PreviewArea">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <WrapPanel Margin="8,4">
+                    <WrapPanel Margin="8,4" Background="#1E1E1E">
                         <TextBlock x:Name="CountText" Foreground="#888888" FontSize="12"/>
                         <TextBlock x:Name="DimText" Foreground="#666666" FontSize="12" Margin="12,0,0,0"/>
+                        <TextBlock x:Name="ZoomText" Foreground="#666666" FontSize="12" Margin="12,0,0,0"/>
                         <TextBlock x:Name="FileNameText" Foreground="#666666" FontSize="12" Margin="12,0,0,0"
                                    TextTrimming="CharacterEllipsis"/>
                         <TextBlock x:Name="AssetTagsText" Foreground="#5A9FD4" FontSize="12" Margin="12,0,0,0"/>
                     </WrapPanel>
 
-                    <Image Grid.Row="1" x:Name="PreviewImage" Stretch="Uniform" Margin="4"
-                           RenderOptions.BitmapScalingMode="Fant"/>
+                    <Border Grid.Row="1" x:Name="PreviewBorder" Background="#181818"
+                            ClipToBounds="True"
+                            MouseWheel="OnPreviewMouseWheel"
+                            MouseLeftButtonDown="OnPreviewMouseDown"
+                            MouseMove="OnPreviewMouseMove"
+                            MouseLeftButtonUp="OnPreviewMouseUp">
+                        <Image x:Name="PreviewImage" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="Fant"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="PreviewScale"/>
+                                    <TranslateTransform x:Name="PreviewTranslate"/>
+                                </TransformGroup>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Border>
                 </Grid>
             </Grid>
         </Grid>
@@ -198,7 +214,8 @@
                             <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                             <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                             <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
-                            <RowDefinition/><RowDefinition/><RowDefinition/>
+                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                            <RowDefinition/><RowDefinition/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0"  Grid.Column="0" Text="J / K,  Up / Down" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
                         <TextBlock Grid.Row="0"  Grid.Column="1" Text="前 / 次の画像" Foreground="#CCCCCC" Margin="0,2"/>
@@ -228,8 +245,14 @@
                         <TextBlock Grid.Row="12" Grid.Column="1" Text="フィルタクリア" Foreground="#CCCCCC" Margin="0,2"/>
                         <TextBlock Grid.Row="13" Grid.Column="0" Text="Right-click" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
                         <TextBlock Grid.Row="13" Grid.Column="1" Text="タグ削除 / エクスプローラー" Foreground="#CCCCCC" Margin="0,2"/>
-                        <TextBlock Grid.Row="14" Grid.Column="0" Text="?" Foreground="#E0A050" FontFamily="Consolas" Margin="0,6,0,0"/>
-                        <TextBlock Grid.Row="14" Grid.Column="1" Text="このヘルプを表示" Foreground="#CCCCCC" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="14" Grid.Column="0" Text="Wheel / +/-" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="14" Grid.Column="1" Text="ズーム / ドラッグでパン" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="15" Grid.Column="0" Text="F / Double-click" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="15" Grid.Column="1" Text="フィットに戻す" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="16" Grid.Column="0" Text="B" Foreground="#E0A050" FontFamily="Consolas" Margin="0,2"/>
+                        <TextBlock Grid.Row="16" Grid.Column="1" Text="背景切替 (暗/チェッカー/白/灰)" Foreground="#CCCCCC" Margin="0,2"/>
+                        <TextBlock Grid.Row="17" Grid.Column="0" Text="?" Foreground="#E0A050" FontFamily="Consolas" Margin="0,6,0,0"/>
+                        <TextBlock Grid.Row="17" Grid.Column="1" Text="このヘルプを表示" Foreground="#CCCCCC" Margin="0,6,0,0"/>
                     </Grid>
                 </StackPanel>
             </Border>

@@ -25,6 +25,11 @@ public partial class MainWindow : Window
     private AssetDatabase? _db;
     private readonly HashSet<string> _activeTagFilters = new(StringComparer.OrdinalIgnoreCase);
     private bool _isGridMode;
+    private Point _panStart;
+    private bool _isPanning;
+    private int _bgIndex;
+    private static readonly Brush[] BgBrushes = [CreateBrush(0x18), CreateCheckerBrush(), Brushes.White, CreateBrush(0x80)];
+    private static readonly string[] BgNames = ["Dark", "Checker", "White", "Gray"];
 
     public MainWindow()
     {
@@ -66,7 +71,7 @@ public partial class MainWindow : Window
         _db?.Dispose();
         _root = root;
         _activeTagFilters.Clear();
-        ThumbnailConverter.ClearCache();
+        ThumbnailConverter.SetRootPath(root);
         Title = $"ImageViewer - {Path.GetFileName(root)}";
         PathText.Text = root;
         _cache.Clear();
@@ -241,6 +246,7 @@ public partial class MainWindow : Window
 
         FileNameText.Text = entry.FileName;
         ShowAssetTags(entry);
+        ResetZoom();
 
         _cts.Cancel();
         _cts = new CancellationTokenSource();
@@ -531,6 +537,14 @@ public partial class MainWindow : Window
                 AddTagToSelected(); e.Handled = true; break;
             case Key.G:
                 ToggleViewMode(); e.Handled = true; break;
+            case Key.B:
+                CycleBackground(); e.Handled = true; break;
+            case Key.F:
+                ResetZoom(); e.Handled = true; break;
+            case Key.OemPlus: case Key.Add:
+                Zoom(1.25); e.Handled = true; break;
+            case Key.OemMinus: case Key.Subtract:
+                Zoom(1.0 / 1.25); e.Handled = true; break;
             case Key.Escape:
                 _activeTagFilters.Clear(); SearchBox.Text = "";
                 RefreshTagPanel(); ApplyFilters();
@@ -549,6 +563,86 @@ public partial class MainWindow : Window
     private void OnHelpOverlayClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         HelpOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    // --- Zoom / Pan / Background ---
+
+    private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        Zoom(e.Delta > 0 ? 1.15 : 1.0 / 1.15);
+        e.Handled = true;
+    }
+
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2) { ResetZoom(); e.Handled = true; return; }
+        _isPanning = true;
+        _panStart = e.GetPosition(PreviewBorder);
+        PreviewBorder.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void OnPreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPanning) return;
+        var pos = e.GetPosition(PreviewBorder);
+        PreviewTranslate.X += pos.X - _panStart.X;
+        PreviewTranslate.Y += pos.Y - _panStart.Y;
+        _panStart = pos;
+    }
+
+    private void OnPreviewMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isPanning) return;
+        _isPanning = false;
+        PreviewBorder.ReleaseMouseCapture();
+    }
+
+    private void Zoom(double factor)
+    {
+        var s = Math.Clamp(PreviewScale.ScaleX * factor, 0.1, 20.0);
+        PreviewScale.ScaleX = PreviewScale.ScaleY = s;
+        ZoomText.Text = $"{s * 100:F0}%";
+    }
+
+    private void ResetZoom()
+    {
+        PreviewScale.ScaleX = PreviewScale.ScaleY = 1.0;
+        PreviewTranslate.X = PreviewTranslate.Y = 0;
+        ZoomText.Text = "";
+    }
+
+    private void CycleBackground()
+    {
+        _bgIndex = (_bgIndex + 1) % BgBrushes.Length;
+        PreviewBorder.Background = BgBrushes[_bgIndex];
+        StatusRight.Text = $"BG: {BgNames[_bgIndex]}";
+    }
+
+    private static SolidColorBrush CreateBrush(byte gray)
+    {
+        var b = new SolidColorBrush(Color.FromRgb(gray, gray, gray));
+        b.Freeze();
+        return b;
+    }
+
+    private static DrawingBrush CreateCheckerBrush()
+    {
+        var light = new SolidColorBrush(Color.FromRgb(0xE0, 0xE0, 0xE0));
+        light.Freeze();
+        var dark = new SolidColorBrush(Color.FromRgb(0xC0, 0xC0, 0xC0));
+        dark.Freeze();
+        var rects = new GeometryGroup();
+        rects.Children.Add(new RectangleGeometry(new Rect(0, 0, 8, 8)));
+        rects.Children.Add(new RectangleGeometry(new Rect(8, 8, 8, 8)));
+        rects.Freeze();
+        var group = new DrawingGroup();
+        group.Children.Add(new GeometryDrawing(light, null, new RectangleGeometry(new Rect(0, 0, 16, 16))));
+        group.Children.Add(new GeometryDrawing(dark, null, rects));
+        group.Freeze();
+        var brush = new DrawingBrush { TileMode = TileMode.Tile, Viewport = new Rect(0, 0, 16, 16), ViewportUnits = BrushMappingMode.Absolute, Drawing = group };
+        brush.Freeze();
+        return brush;
     }
 
     private void Move(int delta)
