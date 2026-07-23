@@ -318,9 +318,19 @@ public partial class MainWindow : Window
             list = list.Where(e => match.Contains(e.RelativePath)).ToList();
         }
 
-        _display = ApplySort(list);
-        ImageList.ItemsSource = _display;
+        var sorted = ApplySort(list);
+
+        bool changed = sorted.Count != _display.Count;
+        if (!changed && sorted.Count > 0)
+            changed = sorted[0].FullPath != _display[0].FullPath
+                   || sorted[^1].FullPath != _display[^1].FullPath;
+
+        _display = sorted;
         UpdateStatus();
+
+        if (!changed) return;
+
+        ImageList.ItemsSource = _display;
 
         if (_display.Count > 0)
         {
@@ -775,6 +785,10 @@ public partial class MainWindow : Window
             case Key.J: case Key.Down:
                 Move(1); e.Handled = true; break;
             case Key.K: case Key.Up:
+                Move(-1); e.Handled = true; break;
+            case Key.Right:
+                Move(1); e.Handled = true; break;
+            case Key.Left:
                 Move(-1); e.Handled = true; break;
             case Key.Space:
                 Move(1); e.Handled = true; break;
