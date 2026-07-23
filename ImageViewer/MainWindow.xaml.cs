@@ -782,22 +782,22 @@ public partial class MainWindow : Window
 
         switch (e.Key)
         {
-            case Key.J: case Key.Down:
+            case Key.Down:
+                Move(_isGridMode ? GridColumns() : 1); e.Handled = true; break;
+            case Key.Up:
+                Move(_isGridMode ? -GridColumns() : -1); e.Handled = true; break;
+            case Key.Right: case Key.J:
                 Move(1); e.Handled = true; break;
-            case Key.K: case Key.Up:
-                Move(-1); e.Handled = true; break;
-            case Key.Right:
-                Move(1); e.Handled = true; break;
-            case Key.Left:
+            case Key.Left: case Key.K:
                 Move(-1); e.Handled = true; break;
             case Key.Space:
                 Move(1); e.Handled = true; break;
             case Key.Back:
                 Move(-1); e.Handled = true; break;
             case Key.PageDown:
-                Move(_isGridMode ? 20 : 10); e.Handled = true; break;
+                Move((_isGridMode ? GridColumns() : 1) * 5); e.Handled = true; break;
             case Key.PageUp:
-                Move(_isGridMode ? -20 : -10); e.Handled = true; break;
+                Move(-(_isGridMode ? GridColumns() : 1) * 5); e.Handled = true; break;
             case Key.Home:
                 JumpTo(0); e.Handled = true; break;
             case Key.End:
@@ -917,6 +917,8 @@ public partial class MainWindow : Window
         brush.Freeze();
         return brush;
     }
+
+    private int GridColumns() => Math.Max(1, (int)(ImageList.ActualWidth / 114));
 
     private void Move(int delta)
     {

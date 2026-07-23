@@ -47,7 +47,7 @@ public sealed class ThumbnailConverter : IValueConverter
             var bi = new BitmapImage();
             bi.BeginInit();
             bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.DecodePixelWidth = 140;
+            bi.DecodePixelWidth = 100;
             bi.StreamSource = new MemoryStream(bytes);
             bi.EndInit();
             bi.Freeze();

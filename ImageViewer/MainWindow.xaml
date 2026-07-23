@@ -24,21 +24,14 @@
                        ToolTip="{Binding RelativePath}"/>
         </DataTemplate>
         <DataTemplate x:Key="GridItemTemplate">
-            <StackPanel Width="140" Margin="2" ToolTip="{Binding RelativePath}">
-                <Border Width="130" Height="130" Background="#2A2A2A"
-                        BorderBrush="#3E3E3E" BorderThickness="1">
-                    <Grid>
-                        <TextBlock Text="{Binding Extension}" FontSize="18" Foreground="#555555"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   FontFamily="Consolas"/>
-                        <Image Source="{Binding FullPath, Converter={StaticResource ThumbConv}, IsAsync=True}"
-                               Stretch="UniformToFill"
-                               RenderOptions.BitmapScalingMode="LowQuality"/>
-                    </Grid>
-                </Border>
+            <StackPanel Width="110" Margin="1" ToolTip="{Binding RelativePath}">
+                <Image Width="100" Height="100"
+                       Source="{Binding FullPath, Converter={StaticResource ThumbConv}, IsAsync=True}"
+                       Stretch="UniformToFill"
+                       RenderOptions.BitmapScalingMode="LowQuality"/>
                 <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"
-                           Foreground="#AAAAAA" FontSize="10" Margin="2,2,2,0"
-                           HorizontalAlignment="Center" MaxWidth="130"/>
+                           Foreground="#AAAAAA" FontSize="9" Margin="0,1,0,0"
+                           HorizontalAlignment="Center" MaxWidth="108"/>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>
@@ -147,6 +140,7 @@
                          SelectionChanged="OnImageSelected"
                          PreviewMouseMove="OnListMouseMove"
                          MouseLeave="OnListMouseLeave"
+                         KeyboardNavigation.DirectionalNavigation="None"
                          ItemTemplate="{StaticResource GridItemTemplate}"
                          ItemsPanel="{StaticResource GridPanel}"
                          VirtualizingPanel.IsVirtualizing="False"
