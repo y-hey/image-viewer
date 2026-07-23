@@ -270,16 +270,16 @@ public partial class MainWindow : Window
         if (e.NewValue is not FolderNode node || string.IsNullOrEmpty(_root)) return;
 
         if (node.Path == _root)
-        {
             _folderFiltered = _master;
-        }
         else
         {
             var prefix = Path.GetRelativePath(_root, node.Path) + Path.DirectorySeparatorChar;
             _folderFiltered = _master.Where(x =>
                 x.RelativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
         }
-        ApplyFilters();
+
+        StatusText.Text = $"{_folderFiltered.Count} files";
+        Dispatcher.InvokeAsync(ApplyFilters, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e)
