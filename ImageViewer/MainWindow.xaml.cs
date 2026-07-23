@@ -14,7 +14,8 @@ public partial class MainWindow : Window
     private static readonly HashSet<string> ImageExt = new(StringComparer.OrdinalIgnoreCase)
     {
         ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".tif",
-        ".ico", ".webp", ".dds", ".wdp", ".jxr"
+        ".ico", ".webp", ".dds", ".wdp", ".jxr",
+        ".psd", ".tga", ".exr", ".hdr"
     };
     private static readonly HashSet<string> AudioExt = new(StringComparer.OrdinalIgnoreCase)
     {

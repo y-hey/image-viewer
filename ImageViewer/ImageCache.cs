@@ -65,6 +65,9 @@ public sealed class ImageCache
 
     private static async Task<BitmapImage?> DecodeAsync(string path, int decodeHeight, CancellationToken ct)
     {
+        if (MagickDecoder.CanDecode(path))
+            return await Task.Run(() => MagickDecoder.Decode(path, decodeHeight > 0 ? decodeHeight : 0), ct);
+
         try
         {
             var bytes = await File.ReadAllBytesAsync(path, ct);

@@ -70,6 +70,14 @@ public sealed class ThumbnailConverter : IValueConverter
             }
         }
 
+        if (MagickDecoder.CanDecode(path))
+        {
+            var img = MagickDecoder.Decode(path, 100);
+            MemCache.TryAdd(path, img);
+            if (img != null) Task.Run(() => SaveToDisk(img, path));
+            return img;
+        }
+
         try
         {
             var bytes = File.ReadAllBytes(path);
