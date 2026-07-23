@@ -176,7 +176,7 @@ public partial class MainWindow : Window
                     _watcherDebounce!.Stop();
                     var newList = await Task.Run(() => Scan(_root));
                     _master = newList;
-                    _folderFiltered = _master;
+                    ReapplyTreeFilter();
                     if (_db != null) await Task.Run(() => _db.SyncFiles(_master));
                     ApplyFilters();
                     StatusText.Text = $"{_master.Count} files";
@@ -265,18 +265,22 @@ public partial class MainWindow : Window
     private void OnTreeSelected(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (e.NewValue is not FolderNode node || string.IsNullOrEmpty(_root)) return;
+        ReapplyTreeFilter();
+        ApplyFilters();
+    }
 
-        if (node.Path == _root)
-            _folderFiltered = _master;
-        else
+    private void ReapplyTreeFilter()
+    {
+        if (FolderTree.SelectedItem is FolderNode node && node.Path != _root)
         {
             var prefix = Path.GetRelativePath(_root, node.Path) + Path.DirectorySeparatorChar;
             _folderFiltered = _master.Where(x =>
                 x.RelativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList();
         }
-
-        StatusText.Text = $"{_folderFiltered.Count} files";
-        Dispatcher.InvokeAsync(ApplyFilters, System.Windows.Threading.DispatcherPriority.Background);
+        else
+        {
+            _folderFiltered = _master;
+        }
     }
 
     private void OnSearchChanged(object sender, TextChangedEventArgs e)
