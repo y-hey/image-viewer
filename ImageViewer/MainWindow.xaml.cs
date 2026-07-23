@@ -242,15 +242,12 @@ public partial class MainWindow : Window
         {
             ImageList.ItemTemplate = (DataTemplate)FindResource("GridItemTemplate");
             ImageList.ItemsPanel = (ItemsPanelTemplate)FindResource("GridPanel");
-            VirtualizingPanel.SetIsVirtualizing(ImageList, false);
             ViewModeButton.Content = "List (G)";
         }
         else
         {
             ImageList.ItemTemplate = (DataTemplate)FindResource("ListItemTemplate");
             ImageList.ItemsPanel = (ItemsPanelTemplate)FindResource("ListPanel");
-            VirtualizingPanel.SetIsVirtualizing(ImageList, true);
-            VirtualizingPanel.SetVirtualizationMode(ImageList, VirtualizationMode.Recycling);
             ViewModeButton.Content = "Grid (G)";
         }
 
